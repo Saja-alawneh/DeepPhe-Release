@@ -1,10 +1,14 @@
 package org.healthnlp.deepphe.viz.neo4j;
 
-import java.util.*;
-import java.util.stream.Collectors;
 import org.apache.log4j.Logger;
-import static org.healthnlp.deepphe.neo4j.Neo4jConstants.*;
 import org.neo4j.graphdb.*;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
+
+import static org.healthnlp.deepphe.neo4j.Neo4jConstants.*;
 
 /**
  * @author SPF , chip-nlp
@@ -50,8 +54,8 @@ final public class DataUtil {
         try (Transaction tx = graphDb.beginTx()) {
             // Do we want to sort in any fashion?  Name, Age, Stage(s)?
             final Collection<Node> patients
-                  = graphDb.findNodes( PATIENT_LABEL ).stream()
-                           .collect( Collectors.toList() );
+                    = graphDb.findNodes( PATIENT_LABEL ).stream()
+                    .collect( Collectors.toList() );
 //            final Node patientRoot = getPatientRoot(graphDb);
 //            if (patientRoot == null) {
 //                tx.success();
@@ -105,7 +109,35 @@ final public class DataUtil {
         }
         return null;
     }
+    // new function IS_A
+    static Node getIsaClass(final GraphDatabaseService graphDb, final Node isa) {
+        if (isa == null) {
+            return null;
+        }
+        try (Transaction tx = graphDb.beginTx()) {
+            for (Relationship isA : isa.getRelationships(Direction.OUTGOING)) {
+                //final Relationship isA = isa.getRelationships(IS_A_RELATION, Direction.OUTGOING);
+                if (isA == null) {
+                    tx.success();
+                    return null;
+                }
+                final String isAName = isA.getType().name();
+                if (isAName.equals(IS_A_PROP)) {
+                    final Node classNode = isA.getOtherNode(isa);
+                    tx.success();
+                    return classNode;
+                }
+            }
+        }
+        catch(MultipleFoundException mfE){
+            LOGGER.error(mfE.getMessage(), mfE);
+        }
+        return null;
+    }
 
+
+
+    // End
     static private String getNodeName(final GraphDatabaseService graphDb, final Node node) {
         try (Transaction tx = graphDb.beginTx()) {
             final Object property = node.getProperty(NAME_KEY);
@@ -119,6 +151,7 @@ final public class DataUtil {
         }
         return MISSING_NODE_NAME;
     }
+
 
     static String getPreferredText(final GraphDatabaseService graphDb, final Node node) {
         try (Transaction tx = graphDb.beginTx()) {
@@ -135,10 +168,46 @@ final public class DataUtil {
         }
         return "";
     }
+    // Add by Saja
+
+    // static String getNodeLabel (final GraphDatabaseService graphDb, final Node node) {
+    //  try (Transaction tx = graphDb.beginTx()) {
+    //    final Node typeClass = getIsaClass(graphDb, node);
+    //  if ( typeClass == null ) {
+    //     tx.success();
+    //    return "";
+    // }
+    //  Iterable<Label> labels = node.getLabels();
+
+
+    // tx.success();
+    //   return labelForNode;
+    //   } catch (MultipleFoundException mfE) {
+//    //     throw new RuntimeException( mfE );
+    // }
+    // return "";
+    //  }
 
     static String getUri(final GraphDatabaseService graphDb, final Node node) {
         try (Transaction tx = graphDb.beginTx()) {
             final Node typeClass = getInstanceClass(graphDb, node);
+            if ( typeClass == null ) {
+                tx.success();
+                return "Unknown";
+            }
+            final String uri = getNodeName(graphDb, typeClass);
+            tx.success();
+            return uri;
+        } catch (MultipleFoundException mfE) {
+//         throw new RuntimeException( mfE );
+        }
+        return "";
+    }
+
+
+    static String getUriIsa(final GraphDatabaseService graphDb, final Node node) {
+        try (Transaction tx = graphDb.beginTx()) {
+            final Node typeClass = getIsaClass(graphDb, node);
             if ( typeClass == null ) {
                 tx.success();
                 return "Unknown";
@@ -267,26 +336,26 @@ final public class DataUtil {
 //        }
 //    }
 
-   static String adjustPropertyName( final String propertyName ) {
-      final char[] original = propertyName.toCharArray();
-      final char[] adjusted = new char[ propertyName.length() ];
-      adjusted[0] = Character.toLowerCase( original[0] );
-      boolean wasScore = false;
-      int adjustedLength = 1;
-      for ( int i=1; i<original.length; i++ ) {
-         if ( wasScore ) {
-            adjusted[ adjustedLength ] = Character.toUpperCase( original[ i ] );
-            wasScore = false;
-         } else if ( original[ i ] == '_' || original[ i ] == ' ' ) {
-            wasScore = true;
-            adjustedLength--;
-         } else {
-            adjusted[ adjustedLength ] = original[ i ];
-         }
-         adjustedLength++;
-      }
-      return new String( Arrays.copyOf( adjusted, adjustedLength ) );
-   }
+    static String adjustPropertyName( final String propertyName ) {
+        final char[] original = propertyName.toCharArray();
+        final char[] adjusted = new char[ propertyName.length() ];
+        adjusted[0] = Character.toLowerCase( original[0] );
+        boolean wasScore = false;
+        int adjustedLength = 1;
+        for ( int i=1; i<original.length; i++ ) {
+            if ( wasScore ) {
+                adjusted[ adjustedLength ] = Character.toUpperCase( original[ i ] );
+                wasScore = false;
+            } else if ( original[ i ] == '_' || original[ i ] == ' ' ) {
+                wasScore = true;
+                adjustedLength--;
+            } else {
+                adjusted[ adjustedLength ] = original[ i ];
+            }
+            adjustedLength++;
+        }
+        return new String( Arrays.copyOf( adjusted, adjustedLength ) );
+    }
 
     static String adjustRelationName( final String relationName ) {
         String hasOnly = relationName.replace( "Disease_", "" );
@@ -353,7 +422,7 @@ final public class DataUtil {
                 .append(chars[4]).append(chars[5])
                 .append('/')
                 .append(chars[6]).append(chars[7]);
-        
+
         return sb.toString();
     }
 
