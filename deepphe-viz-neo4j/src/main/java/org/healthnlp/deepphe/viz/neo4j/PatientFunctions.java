@@ -158,6 +158,72 @@ public class PatientFunctions {
 
     }
 
+    @UserFunction(name = "deepphe.getLabelSummary1")
+    @Description("Returns labels counts and documents information for a given patient ID.")
+    public Map<String, Object> getLabelSummary1(@Name("patientId") String patientId) {
+
+
+        Map<String, Object> patientsTermInfo = new HashMap<>();
+
+
+        try (Transaction tx = graphDb.beginTx()) {
+            final Node patientNode = SearchUtil.getLabeledNode(graphDb, PATIENT_LABEL, patientId);
+            if (patientNode == null) {
+                tx.success();
+                return patientsTermInfo;
+            }
+
+            // Add to the patientsTermInfo map
+            patientsTermInfo.put("patientId", patientId);
+
+            // get the notes for the patient
+            final Collection<Node> docNodes = SearchUtil.getOutRelatedNodes(graphDb, patientNode, SUBJECT_HAS_NOTE_RELATION);
+
+            List<Map<String, String>> docList = new ArrayList<>();
+
+            // For each note, add a patient object
+            for (Node docNode : docNodes) {
+                final Map<String, String> doc = new HashMap<>();
+
+                // doc ID
+                doc.put("docId", DataUtil.objectToString(docNode.getProperty(NAME_KEY)));
+                // doc principal date
+                doc.put("docDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
+                // doc title/name
+                doc.put("docName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
+
+                // doc type
+                doc.put("docType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
+                // doc episode
+                doc.put("docEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
+
+
+                final Collection<Node> noteNodes = SearchUtil.getOutRelatedNodes(graphDb, docNode, NOTE_HAS_TEXT_MENTION_RELATION);
+                for (Node noteNode : noteNodes) {
+                    final Collection<Node> termNodes = SearchUtil.getInRelatedNodes(graphDb, noteNode, FACT_HAS_TEXT_MENTION_RELATION);
+                    for (Node termNode : termNodes) {
+                        final Node targetNode = DataUtil.getInstanceClass(graphDb, termNode);
+                        final String labelName = DataUtil.objectToString(targetNode.getLabels());
+                        doc.put("label", labelName);
+
+
+                        // Add to the docList
+                        docList.add(doc);
+                    }
+                }
+            }
+
+                    // Add to the patientsTermInfo map
+                    patientsTermInfo.put("documents", docList);
+
+                    tx.success();
+                } catch (RuntimeException e) {
+                    throw new RuntimeException("Failed to call getLabelSummary1()");
+                }
+
+                return patientsTermInfo;
+            }
+
     //***************************************************************************************************
 //**************************** Label Summary *********************************************************
 //This is a new function to retrieve all the labels in each document for each patient ****************
@@ -190,6 +256,7 @@ public class PatientFunctions {
                         for (Node termNode : termNodes) {
                             final Map<String, Object> patientTermInfo = new HashMap<>();
                             final Node targetNode = DataUtil.getInstanceClass(graphDb, termNode);
+                            final String term= DataUtil.objectToString(targetNode.getProperty(PREF_TEXT_KEY));
                             final Node classNode = DataUtil.getIsaClass(graphDb, targetNode);
                             final String labelName = DataUtil.objectToString(classNode.getLabels());
                             if (labelName.contains("Finding")) {
@@ -206,10 +273,13 @@ public class PatientFunctions {
                             }
                             if (labelName.contains("Lab")) {
                                 countLab++;
-                            } else {
+                            }
+                            else {
                                 countOther++;
                             }
                             final Map<String, Object> labelCounts = new HashMap<>();
+                            labelCounts.put("term", term);
+                            labelCounts.put("label",labelName);
                             labelCounts.put("FindingCount", countFinding);
                             labelCounts.put("DisorderCount", countDisorder);
                             labelCounts.put("LabCount", countLab);
@@ -225,6 +295,13 @@ public class PatientFunctions {
 
                             patientsTermInfo.add(patientTermInfo);
                         }
+
+                        countDisorder = 0;
+                        countDrug = 0;
+                        countFinding = 0;
+                        countLab = 0;
+                        countOther = 0;
+                        countProcedure = 0;
                     }
                 }
             }
@@ -246,8 +323,8 @@ public class PatientFunctions {
     @UserFunction("deepphe.getDocTermSummary")
     @Description("Returns  Terms, labels in each documents  for a given patient ID.")
     public List<Map<String, Object>> getDocTermSummary(@Name("patientIds") List<String>  patientIds) {
-        List<Map<String, Object>>  docTerms = new ArrayList<>();
-        Map<String, Object> patientDocFacts = new HashMap<>();
+        List<Map<String, Object>>  docList = new ArrayList<>();
+       // Map<String, Object> patientDocFacts = new HashMap<>();
 
         try (Transaction tx = graphDb.beginTx()) {
             for (String patientId : patientIds) {
@@ -263,13 +340,14 @@ public class PatientFunctions {
                 int countDrug = 0;
                 int countOther = 0;
 
-                List<Map<String, Object>> docList = new ArrayList<>();
-                List<Map<String, Object>> termList = new ArrayList<>();
-                List<Map<String, Object>> labelCounts = new ArrayList<>();
+               // List<Map<String, Object>> docList = new ArrayList<>();
+              //  List<Map<String, Object>> termList = new ArrayList<>();
+               // List<Map<String, Object>> labelCounts = new ArrayList<>();
                 final Collection<Node> docNodes = SearchUtil.getOutRelatedNodes(graphDb, patientNode, SUBJECT_HAS_NOTE_RELATION);
 
                 for (Node docNode : docNodes) {
                     Map<String, Object> docInfo = new HashMap<>();
+
                     docInfo.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
                     docInfo.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
                     docInfo.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
@@ -279,13 +357,14 @@ public class PatientFunctions {
 
                     for (Node noteNode : noteNodes) {
 
+
                         final Collection<Node> termNodes = SearchUtil.getInRelatedNodes(graphDb, noteNode, FACT_HAS_TEXT_MENTION_RELATION);
-                        Map<String, Object> termLabelList = new HashMap<>();
-                        Map<String, Object> labelList = new HashMap<>();
+                        //Map<String, Object> termLabelList = new HashMap<>();
+                       // Map<String, Object> labelList = new HashMap<>();
                         for (Node termNode : termNodes) {
 
                             final Node targetNode = DataUtil.getInstanceClass(graphDb, termNode);
-                            termLabelList.put("term", DataUtil.objectToString(targetNode.getProperty(PREF_TEXT_KEY)));
+                            docInfo.put("term", DataUtil.objectToString(targetNode.getProperty(PREF_TEXT_KEY)));
                             final Node classNode = DataUtil.getIsaClass(graphDb, targetNode);
                             final String labelName = DataUtil.objectToString(classNode.getLabels());
                             if (labelName.contains("Finding")) {
@@ -306,26 +385,33 @@ public class PatientFunctions {
                                 countOther++;
                             }
 
-                            termLabelList.put("Label", labelName);
-                            labelList.put("FindingCount", countFinding);
-                            labelList.put("DisorderCount", countDisorder);
-                            labelList.put("LabCount", countLab);
-                            labelList.put("DrugCount", countDrug);
-                            labelList.put("ProcedureCount", countProcedure);
-                            labelList.put("OtherCount", countOther);
+                            docInfo.put("Label", labelName);
+                            docInfo.put("FindingCount", countFinding);
+                            docInfo.put("DisorderCount", countDisorder);
+                            docInfo.put("LabCount", countLab);
+                            docInfo.put("DrugCount", countDrug);
+                            docInfo.put("ProcedureCount", countProcedure);
+                            docInfo.put("OtherCount", countOther);
+                            docInfo.put("PatientID", patientId);
 
 
                         }
-                        labelCounts.add(labelList);
-                        termList.add(termLabelList);
-                        docInfo.put("term Facts", termList);
-                        docInfo.put("Label Facts", labelCounts);
+                        //labelCounts.add(labelList);
+                       // termList.add(termLabelList);
+                       //docInfo.put("term Facts", termList);
+                       // docInfo.put("Label Facts", labelCounts);
                     }
                     docList.add(docInfo);
+                    countDisorder=0;
+                    countDrug=0;
+                    countFinding=0;
+                    countLab=0;
+                    countProcedure=0;
+                    countOther=0;
                 }
-                patientDocFacts.put("DocumentFacts", docList);
-                patientDocFacts.put("PatientID", patientId);
-                docTerms.add(patientDocFacts);
+               // patientDocFacts.put("DocumentFacts", docList);
+                //patientDocFacts.put("PatientID", patientId);
+               // docTerms.add(patientDocFacts);
 
 
             }
@@ -337,7 +423,8 @@ public class PatientFunctions {
         }
 
 
-        return docTerms;
+        return docList;
+
     }
 
     // *******************************************************************************************************
@@ -368,15 +455,16 @@ public class PatientFunctions {
                 int countDisorder = 0;
                 int countDrug = 0;
                 int countOther = 0;
-                Map<String, Object> labelCounts = new HashMap<>();
+                //Map<String, Object> labelCounts = new HashMap<>();
+                Map<String, Object> termLabelList = new HashMap<>();
 
                 final Collection<Node> termNodes = SearchUtil.getOutRelatedNodes(graphDb, patientNode, SUBJECT_HAS_FACT_RELATION);
                 for (Node termNode : termNodes) {
                     // Term summary
                     patientTerms.put("patientId", patientId);
 
-                    Map<String, Object> termLabelList = new HashMap<>();
-                    Map<String, Object> docList = new HashMap<>();
+                   // Map<String, Object> termLabelList = new HashMap<>();
+                   // Map<String, Object> docList = new HashMap<>();
 
 
                     final Node targetNode = DataUtil.getInstanceClass(graphDb, termNode);
@@ -415,10 +503,10 @@ public class PatientFunctions {
                                 if (DocFactRelationName.equals(NOTE_HAS_TEXT_MENTION)) {
                                     final Node docNode = relationDoc.getOtherNode(targetDocNode);
 
-                                    docList.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
-                                    docList.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
-                                    docList.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
-                                    docList.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
+                                    termLabelList.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
+                                    termLabelList.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
+                                   // termLabelList.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
+                                  //  termLabelList.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
 
 
                                 }
@@ -427,19 +515,25 @@ public class PatientFunctions {
                         }
 
                     }
-                    labelCounts.put("FindingCount", countFinding);
-                    labelCounts.put("DisorderCount", countDisorder);
-                    labelCounts.put("LabCount", countLab);
-                    labelCounts.put("DrugCount", countDrug);
-                    labelCounts.put("ProcedureCount", countProcedure);
-                    labelCounts.put("OtherCount", countOther);
-                    termLabelList.put("documentFact", docList);
-                    termLabelDocList.add(termLabelList);
+                    termLabelList.put("FindingCount", countFinding);
+                    termLabelList.put("DisorderCount", countDisorder);
+                    termLabelList.put("LabCount", countLab);
+                    termLabelList.put("DrugCount", countDrug);
+                    termLabelList.put("ProcedureCount", countProcedure);
+                    termLabelList.put("OtherCount", countOther);
+                    //termLabelList.put("documentFact", docList);
+                    //termLabelDocList.add(termLabelList);
+                    countDisorder=0;
+                    countDrug=0;
+                    countFinding=0;
+                    countLab=0;
+                    countProcedure=0;
+                    countOther=0;
 
                 }
-                patientTerms.put("LabelFacts", labelCounts);
-                patientTerms.put("termFacts", termLabelDocList);
-                termDocs.add(patientTerms);
+               // patientTerms.put("LabelFacts", labelCounts);
+               // patientTerms.put("termFacts", termLabelDocList);
+                termDocs.add(termLabelList);
             }
             tx.success();
         } catch (RuntimeException e) {
@@ -1023,6 +1117,8 @@ public class PatientFunctions {
                 System.out.println(functions.getPatientInfo(patientId));
                 System.out.println("\nCANCER AND TUMOR SUMMARY: " + patientId);
                 System.out.println(functions.getCancerAndTumorSummary(patientId));
+                System.out.println("\nDOCUMENTS AND LABELS: " + patientId);
+                System.out.println(functions.getLabelSummary1(patientId));
 
 
             }
@@ -1033,10 +1129,10 @@ public class PatientFunctions {
             System.out.println(functions.getDiagnosis(patientIds));
             System.out.println("\n Label Summary:");
             System.out.println(functions.getLabelSummary(patientIds));
-            //  System.out.println("\n Docs Summary:");
-            //  System.out.println(functions.getDocTermSummary(patientIds));
-            // System.out.println("\nTerms Summary: " + patientIds);
-            //  System.out.println(functions.getTermsLabelSummary(patientIds));
+           // System.out.println("\n Docs Summary:");
+           // System.out.println(functions.getDocTermSummary(patientIds));
+           // System.out.println("\nTerms Summary: " + patientIds);
+          //  System.out.println(functions.getTermsLabelSummary(patientIds));
 
             tx.success();
         } catch (MultipleFoundException mfE) {
