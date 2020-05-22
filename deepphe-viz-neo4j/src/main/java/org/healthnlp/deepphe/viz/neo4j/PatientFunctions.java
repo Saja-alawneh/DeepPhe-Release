@@ -183,12 +183,13 @@ public class PatientFunctions {
 
                 final Collection<Node> docNodes = SearchUtil.getOutRelatedNodes(graphDb, patientNode, SUBJECT_HAS_NOTE_RELATION);
                 for (Node docNode : docNodes) {
-                    final Map<String, Object> labelCounts = new HashMap<>();
                     final Map<String, Object> patientTermInfo = new HashMap<>();
+                    final Map<String, Object> labelCounts = new HashMap<>();
                     final Collection<Node> noteNodes = SearchUtil.getOutRelatedNodes(graphDb, docNode, NOTE_HAS_TEXT_MENTION_RELATION);
                     for (Node noteNode : noteNodes) {
                         final Collection<Node> termNodes = SearchUtil.getInRelatedNodes(graphDb, noteNode, FACT_HAS_TEXT_MENTION_RELATION);
                         for (Node termNode : termNodes) {
+
 
                             final Node targetNode = DataUtil.getInstanceClass(graphDb, termNode);
                             final String term = DataUtil.objectToString(targetNode.getProperty(PREF_TEXT_KEY));
@@ -207,30 +208,26 @@ public class PatientFunctions {
                             } else {
                                 countOther++;
                             }
-
                             labelCounts.put("term", term);
-                            labelCounts.put("label",labelName);
-
-                            //patientTermInfo.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
-                            // patientTermInfo.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
-                            // patientTermInfo.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
-
-                            patientsTermInfo.add(patientTermInfo);
+                            labelCounts.put("label", labelName);
                         }
 
 
-                        labelCounts.put("FindingCount", countFinding);
-                        labelCounts.put("DisorderCount", countDisorder);
-                        labelCounts.put("LabCount", countLab);
-                        labelCounts.put("DrugCount", countDrug);
-                        labelCounts.put("ProcedureCount", countProcedure);
-                        labelCounts.put("OtherCount", countOther);
-                        patientTermInfo.put("patientId", patientId);
-                        patientTermInfo.put("labelCounts", labelCounts);
-                        patientTermInfo.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
-                        //patientTermInfo.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
-                       // patientTermInfo.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
-                       // patientTermInfo.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
+
+                            labelCounts.put("FindingCount", countFinding);
+                            labelCounts.put("DisorderCount", countDisorder);
+                            labelCounts.put("LabCount", countLab);
+                            labelCounts.put("DrugCount", countDrug);
+                            labelCounts.put("ProcedureCount", countProcedure);
+                            labelCounts.put("OtherCount", countOther);
+                            patientTermInfo.put("patientId", patientId);
+                            patientTermInfo.put("labelCounts", labelCounts);
+                            patientTermInfo.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
+                            //patientTermInfo.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
+                            // patientTermInfo.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
+                            // patientTermInfo.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
+                            patientsTermInfo.add(patientTermInfo);
+
 
                         countDisorder = 0;
                         countDrug = 0;
@@ -239,6 +236,7 @@ public class PatientFunctions {
                         countOther = 0;
                         countProcedure = 0;
                     }
+
                 }
             }
 
