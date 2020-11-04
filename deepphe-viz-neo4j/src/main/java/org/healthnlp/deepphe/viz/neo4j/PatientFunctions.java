@@ -182,7 +182,7 @@ public class PatientFunctions {
                 int countOther = 0;
 
                 final Collection<Node> docNodes = SearchUtil.getOutRelatedNodes(graphDb, patientNode, SUBJECT_HAS_NOTE_RELATION);
-                for (Node docNode : docNodes) {
+                for (Node docNode : docNodes) {  ///for each document
                     final Map<String, Object> patientTermInfo = new HashMap<>();
                     final Map<String, Object> labelCounts = new HashMap<>();
                     final Collection<Node> noteNodes = SearchUtil.getOutRelatedNodes(graphDb, docNode, NOTE_HAS_TEXT_MENTION_RELATION);
@@ -208,37 +208,34 @@ public class PatientFunctions {
                             } else {
                                 countOther++;
                             }
-                            labelCounts.put("term", term);
-                            labelCounts.put("label", labelName);
-                        }
+                            //labelCounts.put("term", term);
+                           // labelCounts.put("label", labelName);
+                        }  // loop overall of the facts associated with the text mention
 
+                    } // loop overall of the text mentions asociated with a documnt
 
+                    labelCounts.put("FindingCount", countFinding);
+                    labelCounts.put("DisorderCount", countDisorder);
+                    labelCounts.put("LabCount", countLab);
+                    labelCounts.put("DrugCount", countDrug);
+                    labelCounts.put("ProcedureCount", countProcedure);
+                    labelCounts.put("OtherCount", countOther);
+                    patientTermInfo.put("patientId", patientId);
+                    patientTermInfo.put("labelCounts", labelCounts);
+                    patientTermInfo.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
+                    patientTermInfo.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
+                    patientTermInfo.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
+                    patientTermInfo.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
+                    patientsTermInfo.add(patientTermInfo);
 
-                            labelCounts.put("FindingCount", countFinding);
-                            labelCounts.put("DisorderCount", countDisorder);
-                            labelCounts.put("LabCount", countLab);
-                            labelCounts.put("DrugCount", countDrug);
-                            labelCounts.put("ProcedureCount", countProcedure);
-                            labelCounts.put("OtherCount", countOther);
-                            patientTermInfo.put("patientId", patientId);
-                            patientTermInfo.put("labelCounts", labelCounts);
-                            patientTermInfo.put("documentName", DataUtil.objectToString(docNode.getProperty(NOTE_NAME_VIZ)));
-                            //patientTermInfo.put("documentEpisode", DataUtil.objectToString(docNode.getProperty(NOTE_EPISODE_VIZ)));
-                            // patientTermInfo.put("documentType", DataUtil.objectToString(docNode.getProperty(NOTE_TYPE_VIZ)));
-                            // patientTermInfo.put("documentDate", DataUtil.getReportDate(DataUtil.objectToString(docNode.getProperty(NOTE_DATE_VIZ))));
-                            patientsTermInfo.add(patientTermInfo);
-
-
-                        countDisorder = 0;
-                        countDrug = 0;
-                        countFinding = 0;
-                        countLab = 0;
-                        countOther = 0;
-                        countProcedure = 0;
-                    }
-
-                }
-            }
+                    countDisorder = 0;
+                    countDrug = 0;
+                    countFinding = 0;
+                    countLab = 0;
+                    countOther = 0;
+                    countProcedure = 0;
+                } //loop overall documents
+            }  //loop overall patients
 
             tx.success();
         } catch (
@@ -815,27 +812,23 @@ public class PatientFunctions {
 
                 patientIds.add(patientId);
 
-                System.out.println("\nPATIENT_TIMELINE: " + patientId);
-                System.out.println(functions.getTimelineData(patientId));
-                System.out.println("\nPATIENT_INFO: " + patientId);
-                System.out.println(functions.getPatientInfo(patientId));
-                System.out.println("\nCANCER AND TUMOR SUMMARY: " + patientId);
-                System.out.println(functions.getCancerAndTumorSummary(patientId));
+             //   System.out.println("\nPATIENT_TIMELINE: " + patientId);
+              //  System.out.println(functions.getTimelineData(patientId));
+              //  System.out.println("\nPATIENT_INFO: " + patientId);
+              //  System.out.println(functions.getPatientInfo(patientId));
+              //  System.out.println("\nCANCER AND TUMOR SUMMARY: " + patientId);
+              //  System.out.println(functions.getCancerAndTumorSummary(patientId));
 
 
 
             }
 
-            System.out.println("\nPATIENTS BIOMARKERS:");
-            System.out.println(functions.getBiomarkers(patientIds));
-            System.out.println("\nPATIENTS DIAGNOSES:");
-            System.out.println(functions.getDiagnosis(patientIds));
-            System.out.println("\n Label Summary:");
-            System.out.println(functions.getLabelSummary(patientIds));
-          //  System.out.println("\n Docs Summary:");
-         //   System.out.println(functions.getDocTermSummary(patientIds));
-         //   System.out.println("\nTerms Summary: " + patientIds);
-         //   System.out.println(functions.getTermsLabelSummary(patientIds));
+              System.out.println("\nPATIENTS BIOMARKERS:");
+              System.out.println(functions.getBiomarkers(patientIds));
+              System.out.println("\nPATIENTS DIAGNOSES:");
+              System.out.println(functions.getDiagnosis(patientIds));
+              System.out.println("\n Label Summary:");
+              System.out.println(functions.getLabelSummary(patientIds));
 
             tx.success();
         } catch (MultipleFoundException mfE) {
